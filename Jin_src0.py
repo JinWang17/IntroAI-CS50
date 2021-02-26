@@ -1,296 +1,214 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[20]:
-
-
 ##################################################################
 # Jin Wang
-# Feb 21, 2021
-# The following has been changed to the source code maze.py:
-# 1) The function maze.solve can now choose BFS or DFS as searching options
-# 2) Add comments a few places to understand the logic
-# 3) Add color legend for the exploration graph
-# TODO: Add Greedy Best-first search and A* to code
+# Feb 24, 2021
+# The following has been changed to the source code degrees.py:
+# 1) Add the logic for shortest path 
+# TODO: 
 ##################################################################
-
-
-# %load "C:/Users/wangj337/Google Drive/Courses/IntroToAI/0Search/src0/maze.py"
-# uncomment the above line will import the PATH/FILE into notebook
-# Need to install image module for plot
-# !pip install image
-
+import csv
 import sys
-import PIL
 
-class Node():
-    def __init__(self, state, parent, action):
-        self.state = state
-        self.parent = parent
-        self.action = action
+from util import Node, StackFrontier, QueueFrontier
 
+# Maps names to a set of corresponding person_ids
+# names = {Name(lowercase): ID (multiple ID is fine)}
+names = {}
 
-class StackFrontier():
-    def __init__(self):
-        self.frontier = []
+# Maps person_ids to a dictionary of: name, birth, movies (a set of movie_ids)
+# people = {ID: name, birth, movies}
+people = {}
 
-    def add(self, node):
-        self.frontier.append(node)
+# Maps movie_ids to a dictionary of: title, year, stars (a set of person_ids)
+movies = {}
 
-    def contains_state(self, state):
-        return any(node.state == state for node in self.frontier)
+def load_data(directory):
+    """
+    Load data from CSV files into memory.
+    """
+    # Load people
+    with open(f"{directory}/people.csv", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            people[row["id"]] = {
+                "name": row["name"],
+                "birth": row["birth"],
+                "movies": set()   
+                # what does this line do? This is an empty set used to store unique elements later
+            }
+            if row["name"].lower() not in names:
+                names[row["name"].lower()] = {row["id"]}
+            else:
+                names[row["name"].lower()].add(row["id"])
 
-    def empty(self):
-        return len(self.frontier) == 0
+    # Load movies
+    with open(f"{directory}/movies.csv", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            movies[row["id"]] = {
+                "title": row["title"],
+                "year": row["year"],
+                "stars": set()
+            }
 
-    def remove(self):
-        if self.empty():
-            raise Exception("empty frontier")
-        else:
-            node = self.frontier[-1]
-            self.frontier = self.frontier[:-1]
-            return node
-
-
-class QueueFrontier(StackFrontier):
-    # this class is inheriated from StackFrontier
-
-    def remove(self):
-        if self.empty():
-            raise Exception("empty frontier")
-        else:
-            node = self.frontier[0]
-            self.frontier = self.frontier[1:]
-            return node
-
-
-# In[30]:
-
-
-class Maze():
-
-    def __init__(self, filename):
-
-        # Read file and set height and width of maze
-        with open(filename) as f:
-            contents = f.read()
-
-        # Validate start and goal
-        if contents.count("A") != 1:
-            raise Exception("maze must have exactly one start point")
-        if contents.count("B") != 1:
-            raise Exception("maze must have exactly one goal")
-
-        # Determine height and width of maze
-        contents = contents.splitlines()
-        self.height = len(contents)
-        self.width = max(len(line) for line in contents)
-
-        # Keep track of walls
-        self.walls = []
-        for i in range(self.height):
-            row = []  #row is a queue of T/F; T indicate Walls
-            for j in range(self.width):
-                try:
-                    if contents[i][j] == "A":
-                        self.start = (i, j)
-                        row.append(False)
-                    elif contents[i][j] == "B":
-                        self.goal = (i, j)
-                        row.append(False)
-                    elif contents[i][j] == " ":
-                        row.append(False)
-                    else:
-                        row.append(True)
-                except IndexError:
-                    row.append(False)
-            self.walls.append(row)
-
-        self.solution = None
+    # Load stars
+    with open(f"{directory}/stars.csv", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                people[row["person_id"]]["movies"].add(row["movie_id"])
+                movies[row["movie_id"]]["stars"].add(row["person_id"])
+            except KeyError:
+                pass 
+            # Q: Why would there be any error??
+            # A: When the star.csv contains movies/ poeple that are not listed in the people.csv or movie.csv
+            # The Python KeyError is a type of LookupError exception and denotes that there was an issue retrieving the key you were looking for. 
+            # When you see a KeyError , the semantic meaning is that the key being looked for could not be found.
 
 
-    def print(self):
-        solution = self.solution[1] if self.solution is not None else None
-        print()
-        for i, row in enumerate(self.walls): # i: 0, 1, 2, 3, etc; row: [True, True, True, True, False, False, True] etc
-            for j, col in enumerate(row): # j: 0, 1, 2, 3, etc; col: True, True, True, etc  
-                if col:
-                    print("█", end="")
-                elif (i, j) == self.start:
-                    print("A", end="")
-                elif (i, j) == self.goal:
-                    print("B", end="")
-                elif solution is not None and (i, j) in solution:
-                    print("*", end="")
-                else:
-                    print(" ", end="")
-            print()
-        print()
+
+def main():
+    # TODO: What is the difference between main() and directly writing out the main lines as in src0.py?
+    
+    if len(sys.argv) > 2:
+        sys.exit("Usage: python degrees.py [directory]")
+    directory = sys.argv[1] if len(sys.argv) == 2 else "large"
+    # default is to use "large"
+    # USAGE: XX = ... if ... else ... 
+
+    # Load data from files into memory
+    print("Loading data...")
+    load_data(directory)
+    print("Data loaded.")
+
+    source = person_id_for_name(input("Name: "))
+    if source is None:
+        sys.exit("Person not found.")
+    target = person_id_for_name(input("Name: "))
+    if target is None:
+        sys.exit("Person not found.")
+
+    path = shortest_path(source, target)
+
+    if path is None:
+        print("Not connected.")
+    else:
+        degrees = len(path)
+        print(f"{degrees} degrees of separation.")
+        path = [(None, source)] + path 
+        # path is like a matrix, first element is the movie that connects with last person; second element is the person's name
+        # movie name and person name is in ID 
+        for i in range(degrees): # 0, 1, 2, ..., degrees
+            person1 = people[path[i][1]]["name"]  # access name by ID
+            person2 = people[path[i + 1][1]]["name"]
+            movie = movies[path[i + 1][0]]["title"] # access title by ID
+            print(f"{i + 1}: {person1} and {person2} starred in {movie}")
+            # print(f"{Variables to be replaces} Variables to be displayed")
 
 
-    def neighbors(self, state):
-        row, col = state
-        candidates = [
-            ("up", (row - 1, col)),
-            ("down", (row + 1, col)),
-            ("left", (row, col - 1)),
-            ("right", (row, col + 1))
-        ]
-
-        result = []
-        for action, (r, c) in candidates:
-            if 0 <= r < self.height and 0 <= c < self.width and not self.walls[r][c]:
-                result.append((action, (r, c)))
-        return result
-
-
-    def solve(self, search="DFS"):
-        """Finds a solution to maze, if one exists."""
-
-        # Keep track of number of states explored
-        self.num_explored = 0
-
-        # Initialize frontier to just the starting position
-        start = Node(state=self.start, parent=None, action=None)
-        frontier = StackFrontier() # frontier is initialized as stack, therefore DFS
-        if search == "BFS":
-            frontier = QueueFrontier()
-        elif search != "DFS":
-            raise Exception("Search method must be one of the following: BFS or DFS")
-        frontier.add(start)
-
-        # Initialize an empty explored set
-        self.explored = set()
-
-        # Keep looping until solution found
-        while True:
-
-            # If nothing left in frontier, then no path
-            if frontier.empty():
-                raise Exception("no solution")
-
-            # Choose a node from the frontier
-            node = frontier.remove()
-            self.num_explored += 1
-
-            # If node is the goal, then we have a solution
-            if node.state == self.goal:
-                actions = []
-                cells = []
-                while node.parent is not None:
-                    actions.append(node.action)
-                    cells.append(node.state)
-                    node = node.parent
-                actions.reverse()
-                cells.reverse()
-                self.solution = (actions, cells)
-                return
-
-            # Mark node as explored
-            self.explored.add(node.state)
-
-            # Add neighbors to frontier
-            for action, state in self.neighbors(node.state):
-                if not frontier.contains_state(state) and state not in self.explored:
-                    child = Node(state=state, parent=node, action=action)
-                    frontier.add(child)
+def person_id_for_name(name):
+    """
+    Returns the IMDB id for a person's name,
+    resolving ambiguities as needed.
+    """
+    person_ids = list(names.get(name.lower(), set())) 
+    # dict.get(key[, value]) is the same as dict[key] most of the time
+    # Difference: get() method returns a default value if the key is missing.
+    # However, if the key is not found when you use dict[key], KeyError exception is raised.
+    # Here, we ask the code to return an empty set when there is no such person in the dictionary "names"
+     
+    if len(person_ids) == 0:
+        return None
+    elif len(person_ids) > 1:
+        print(f"Which '{name}'?")
+        for person_id in person_ids:
+            person = people[person_id]
+            name = person["name"]
+            birth = person["birth"]
+            print(f"ID: {person_id}, Name: {name}, Birth: {birth}")
+        try:
+            person_id = input("Intended Person ID: ")
+            if person_id in person_ids:
+                return person_id
+        except ValueError:
+            pass
+        return None
+    else:
+        return person_ids[0]
 
 
-    def output_image(self, filename, show_solution=True, show_explored=False):
-        from PIL import Image, ImageDraw
-        cell_size = 50
-        cell_border = 2
+def neighbors_for_person(person_id):
+    """
+    Returns (movie_id, person_id) pairs for people
+    who starred with a given person.
+    """
+    movie_ids = people[person_id]["movies"]
+    neighbors = set()
+    for movie_id in movie_ids:
+        for person_id in movies[movie_id]["stars"]:
+            neighbors.add((movie_id, person_id))
+    return neighbors
 
-        # Color code
-        colorDic = {
-            "Walls": (40, 40, 40),
-            "Start": (255, 0, 0),
-            "Goal": (0, 171, 28),
-            "Solution": (220, 235, 113),
-            "Explored": (212, 97, 85),
-            "Empty": (237, 240, 252)
-        } 
+
+def shortest_path(source, target):
+    """
+    Returns the shortest list of (movie_id, person_id) pairs
+    that connect the source to the target.
+
+    If no possible path, returns None.
+    """
+    
+    # Initialize frontier to just the source person ID
+    start = Node(state=source, parent=None, action=None)
+    frontier = QueueFrontier()
+    frontier.add(start)
+    
+    # Initialize an empty explored set
+    explored = set()
+    
+    # Keep looping until solution found
+    while True:
         
-        # Create a blank canvas
-        img = Image.new(
-            "RGBA",
-            ((self.width + 2) * cell_size, max(self.height, len(colorDic)) * cell_size),
-            "black"
-        )
-        draw = ImageDraw.Draw(img)
-
-        solution = self.solution[1] if self.solution is not None else None
-        for i, row in enumerate(self.walls):  
-            for j, col in enumerate(row):
-
-                # Walls
-                if col:
-                    fill = colorDic["Walls"]
-
-                # Start
-                elif (i, j) == self.start:
-                    fill = colorDic["Start"]
-
-                # Goal
-                elif (i, j) == self.goal:
-                    fill = colorDic["Goal"]
-
-                # Solution
-                elif solution is not None and show_solution and (i, j) in solution:
-                    fill = colorDic["Solution"]
-
-                # Explored
-                elif solution is not None and show_explored and (i, j) in self.explored:
-                    fill = colorDic["Explored"]
-
-                # Empty cell
-                else:
-                    fill = colorDic["Empty"]
-
-                # Draw cell
-                draw.rectangle(
-                    ([(j * cell_size + cell_border, i * cell_size + cell_border),
-                      ((j + 1) * cell_size - cell_border, (i + 1) * cell_size - cell_border)]),
-                    fill=fill
-                )
+        # print("a new loop")
+        # If nothing left in frontier, then no path
+        if frontier.empty():
+            return
         
-        for k, kCode in enumerate(colorDic):
-            draw.rectangle(
-                ([((self.width + 1) * cell_size + cell_border, k * cell_size + cell_border),
-                  ((self.width + 2) * cell_size - cell_border, (k + 1) * cell_size - cell_border)]),
-                fill = colorDic[kCode]
-            )
-            # how to add text at this pos?
-            draw.text((self.width * cell_size + cell_border, (k + 0.5) * cell_size), list(colorDic)[k], fill=(255,255,255,128))
+        # Choose a node from the frontier
+        node = frontier.remove()
+        # print(f"person_ID: {node.state}")
+        # print(f"movie_ID: {node.action}")
+        # Mark node as explored
+        explored.add(node.state)
 
-        img.save(filename)
-        
-       
+        # Add neighbors to frontier
+        for action, state in neighbors_for_person(node.state):
+            if not frontier.contains_state(state) and state not in explored:
+                # check if node is the target; if yes, then we have a solution
+                
+                # set_trace()
+                # Type “n” and hit Enter to run the next line of code (The → arrow shows you the current position). 
+                # Use “c” to continue until the next breakpoint. “q” quits the debugger and code execution.
+                
+                if state == target:
+                    # print("hit target")
+                    solution = [(action, state)]
+                    # actions is the movie list; cells is the movie star list 
+                    while node.parent is not None:
+                        solution.append((node.action, node.state))
+                        node = node.parent
+                    solution.reverse()
+                    #print(solution)
+                    return(list(solution))
+                
+                # if not the target person, add this to the frontier
+                child = Node(state=state, parent=node, action=action)
+                frontier.add(child)
 
 
-if len(sys.argv) != 2 and len(sys.argv) != 3:
-    sys.exit("Usage: python maze.py maze.txt (Search Method)")
 
-# print("Maze:")
-mazeName = sys.argv[1]   
-m = Maze(mazeName)
-print(mazeName.replace(".txt", ":"))
-m.print()
-
-if(len(sys.argv) == 2):
-    print("Solving using DFS (default method)...")
-    m.solve()
-else:
-    print("Solving using " + sys.argv[2] + "...")
-    m.solve(sys.argv[2])
-
-print("States Explored:", m.num_explored)
-print("Solution:")
-m.print()
-
-# m.output_image("maze.png", show_explored=True)
-m.output_image(mazeName.replace(".txt", ".png"), show_explored=True)
-
-# Ran from the console, this is:
-# %run maze.py maze1.txt
+if __name__ == "__main__":
+    main()
 
