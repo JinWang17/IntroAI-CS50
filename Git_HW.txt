@@ -1,0 +1,26 @@
+1. [create a new branch]
+git checkout -b ai50/projects/2020/x/knights
+	C:\Users\wangj337\Google Drive\Courses\IntroToAI\hw>git checkout -b ai50/projects/2020/x/knights
+	Switched to a new branch 'ai50/projects/2020/x/knights'
+
+2. [verify that you are on the correct branch]
+git status
+	C:\Users\wangj337\Google Drive\Courses\IntroToAI\hw>git status
+	On branch ai50/projects/2020/x/knights
+	nothing to commit, working tree clean
+
+3. [make the folder look like what teacher expects to grade]
+del XXX, copy XXX 
+
+4. [check now the folder is absolutely correct!]
+git status
+
+
+5. [accept the change and commit to local branch]
+git add .
+git commit -m "my commit message"
+
+6. [push to remote branch]
+git push --set-upstream origin ai50/projects/2020/x/knights
+
+
