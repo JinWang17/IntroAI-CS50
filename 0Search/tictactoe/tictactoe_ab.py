@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
+
+
 ##################################################################
 # Jin Wang
 # March 2, 2021
-# The simple minimax algorithm was implemented
+# The following has been changed to the source code degrees.py:
+# 1) 
 ##################################################################
 from IPython.core.debugger import set_trace
-
 
 """
 Tic Tac Toe Player
@@ -33,7 +35,6 @@ def player(board):
     """
     Returns player who has the next turn on a board.
     """
-    # Change
     movesLeft = sum(x.count(EMPTY) for x in board)
     if (movesLeft % 2) == 1:
         return X
@@ -78,8 +79,6 @@ def winner(board):
     """
     Returns the winner of the game, if there is one.
     """
-    # Change: if all entries are X/ O
-    
     # If one player fills a row, return that player's name
     for i, row in enumerate(board):
         if row == ["X", "X", "X"]:
@@ -145,15 +144,15 @@ def minimax(board):
     # The move returned should be the optimal action (i, j) that is one of the allowable actions on the board. 
     # The maximizing player picks action a in Actions(s) that produces the highest value of Min-Value(Result(s, a)).
     if player(board) == X: 
-        return maxValue(board)[1]
+        return maxValueAB(board)[1]
     # The minimizing player picks action a in Actions(s) that produces the lowest value of Max-Value(Result(s, a)).
     else:
-        return minValue(board)[1]
+        return minValueAB(board)[1]
     
     
 
     
-def maxValue(board):
+def maxValueAB(board, parentThreshold = float("inf")):
     
     optAction = None
     # if Terminal(state), return Utility(state), else, return the max of min values
@@ -162,18 +161,21 @@ def maxValue(board):
         return (utility(board), None)
     else:
         v = -float("inf")
+        childThreshold = v
         for action in actions(board):
             v_original = v
-            v = max(v, minValue(result(board, action))[0])
+            v = max(v, minValueAB(result(board, action), childThreshold)[0])
             # set_trace()
             if v > v_original:
                 optAction = action
             #set_trace()
+            if v > parentThreshold:
+                return(v, optAction)
         return (v, optAction)
 
 
     
-def minValue(board):
+def minValueAB(board, parentThreshold = -float("inf")):
     
     optAction = None
     # if Terminal(state), return Utility(state), else, return the max of min values
@@ -182,11 +184,18 @@ def minValue(board):
         return (utility(board), None)
     else:
         v = float("inf")
+        childThreshold = v
         for action in actions(board):
             v_original = v
-            v = min(v, maxValue(result(board, action))[0])
+            v = min(v, maxValueAB(result(board, action), childThreshold)[0])
             # set_trace()
             if v < v_original:
                 optAction = action
+            if v < parentThreshold:
+                return(v, optAction)
         return (v, optAction)
+
+
+
+
 
