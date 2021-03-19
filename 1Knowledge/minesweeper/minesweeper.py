@@ -254,7 +254,7 @@ class MinesweeperAI():
             #set_trace()
             # add new sentences to the AI's knowledge base if they can be inferred from existing knowledge
             tempKnowledge = copy.deepcopy(self.knowledge)
-            for k1, k2 in itertools.permutations(tempKnowledge, 2):
+            for k1, k2 in itertools.combinations(tempKnowledge, 2):
                 if k1.cells and k2.cells:
                     if k1.cells < k2.cells:
                         temp = Sentence(k2.cells - k1.cells, k2.count - k1.count)
