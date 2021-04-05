@@ -65,9 +65,12 @@ def main():
     for have_trait in powerset(names):
 
         # Check if current set of people violates known information
+        # ???????
         fails_evidence = any(
             (people[person]["trait"] is not None and
              people[person]["trait"] != (person in have_trait))
+            # if person has trait from knowledge but not captured in the have_trait set, 
+            # then we know we should skip this probability
             for person in names
         )
         if fails_evidence:
@@ -76,7 +79,8 @@ def main():
         # Loop over all sets of people who might have the gene
         for one_gene in powerset(names):
             for two_genes in powerset(names - one_gene):
-
+                # make sure 1) one_gene and two_gene are exclusive
+                # 2) one_gene + two_gene <= names            
                 # Update probabilities with new joint probability
                 p = joint_probability(people, one_gene, two_genes, have_trait)
                 update(probabilities, one_gene, two_genes, have_trait, p)
@@ -117,6 +121,7 @@ def load_data(filename):
 
 
 def powerset(s):
+    # return all non-repeated subsets of s 
     """
     Return a list of all possible subsets of set s.
     """
@@ -139,7 +144,91 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
-    raise NotImplementedError
+    
+    p = 1
+    
+    # update contribution of probability from gene
+    for person in set(people):
+        mother = people[person]['mother']
+        father = people[person]['father']
+        # everyone in set `one_gene` has one copy of the gene
+        if person in one_gene: 
+            if mother and father:
+                p *= compute_child(father, mother, 1, one_gene, two_genes)
+            else: 
+                p *= PROBS["gene"][1] 
+            # update trait
+            p *= PROBS["trait"][1][True] if person in have_trait else PROBS["trait"][1][False] 
+        # everyone in set `two_genes` has two copies of the gene
+        elif person in two_genes:
+            if mother and father:
+                p *= compute_child(father, mother, 2, one_gene, two_genes)
+            else: 
+                p *= PROBS["gene"][2] 
+            # update trait
+            p *= PROBS["trait"][2][True] if person in have_trait else PROBS["trait"][2][False] 
+        # everyone not in `one_gene` or `two_gene` does not have the gene
+        else:
+            if mother and father:
+                p *= compute_child(father, mother, 0, one_gene, two_genes)
+            else: 
+                p *= PROBS["gene"][0] 
+            # update trait
+            p *= PROBS["trait"][0][True] if person in have_trait else PROBS["trait"][0][False] 
+    
+    return p
+    
+      
+    
+def compute_child(father, mother, n, one_gene, two_genes):
+    """
+    computes and returns the probability of the child having n copies of genes
+    given the name of this person's mother and father
+    """
+    # the prpbability that father passes 1 or 0 gene to the child
+    from_father = {
+        "gene": {
+            1: 0,
+            0: 0
+        }
+    }   
+    if father in two_genes:
+        from_father["gene"][1] = 1 - PROBS["mutation"]
+        from_father["gene"][0] = PROBS["mutation"]
+    elif father in one_gene:
+        from_father["gene"][1] = 0.5 # 0.5 * PROB["mutation"] + 0.5 * (1 - PROB["mutation"])
+        from_father["gene"][0] = 0.5
+    else:
+        from_father["gene"][1] = PROBS["mutation"]
+        from_father["gene"][0] = 1 - PROBS["mutation"]
+    
+    # the prpbability that mother passes 1 or 0 gene to the child
+    from_mother = {
+        "gene": {
+            1: 0,
+            0: 0
+        }
+    }   
+    if mother in two_genes:
+        from_mother["gene"][1] = 1 - PROBS["mutation"]
+        from_mother["gene"][0] = PROBS["mutation"]
+    elif mother in one_gene:
+        from_mother["gene"][1] = 0.5 # 0.5 * PROB["mutation"] + 0.5 * (1 - PROB["mutation"])
+        from_mother["gene"][0] = 0.5
+    else:
+        from_mother["gene"][1] = PROBS["mutation"]
+        from_mother["gene"][0] = 1 - PROBS["mutation"]
+   
+    # probability that child has 0/1/2 genes from parents
+    if n == 2:
+        return from_father["gene"][1] * from_mother["gene"][1]
+    elif n == 1:
+        return (from_father["gene"][1] * from_mother["gene"][0] +
+         from_mother["gene"][1] * from_father["gene"][0])
+    else:
+        return from_father["gene"][0] * from_mother["gene"][0]
+                                                            
+
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
@@ -149,16 +238,45 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
-
+    for person in set(probabilities):
+        # update to gene part
+        if person in one_gene:
+            probabilities[person]["gene"][1] += p
+        elif person in two_genes:
+            probabilities[person]["gene"][2] += p
+        else:
+            probabilities[person]["gene"][0] += p
+        
+        # update to trait part
+        if person in have_trait:
+            probabilities[person]["trait"][True] += p
+        else:
+            probabilities[person]["trait"][False] += p        
+    
+    # this function operates on the original copy of probabilities; therefore no need to return
+    
 
 def normalize(probabilities):
     """
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person in set(probabilities):
+        # normlize gene part
+        gene_sum = (probabilities[person]["gene"][1] + probabilities[person]["gene"][2] +
+         probabilities[person]["gene"][0])
+        probabilities[person]["gene"][1] /= gene_sum
+        probabilities[person]["gene"][2] /= gene_sum
+        probabilities[person]["gene"][0] /= gene_sum
+        
+        # normalize trait part
+        trait_sum = probabilities[person]["trait"][True] + probabilities[person]["trait"][False]
+        probabilities[person]["trait"][True] /= trait_sum 
+        probabilities[person]["trait"][False] /= trait_sum 
+        
+    # this function operates on the original copy of probabilities; therefore no need to return
 
 
 if __name__ == "__main__":
     main()
+
