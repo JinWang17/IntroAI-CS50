@@ -2,7 +2,7 @@ This is my code for the **Havard AI course assignments**. In addition to codes f
 
 **Course**: CS50's Introduction to Artificial Intelligence with Python 
 
-**Website**: (https://learning.edx.org/course/course-v1:HarvardX+CS50AI+1T2020/home)
+**Website**: https://learning.edx.org/course/course-v1:HarvardX+CS50AI+1T2020/home
 
 **Syllabus**:
 - Week0: Search
