@@ -1,6 +1,9 @@
-This is my code for the **Havard AI course assignments**
+This is my code for the **Havard AI course assignments**. In addition to codes for course projects, I also added my own comments to the source code in lecture demo as I learn Python from an absolute beginned perspective. Be sure to check those out, too!  
+
 **Course**: CS50's Introduction to Artificial Intelligence with Python 
+
 **Website**: (https://learning.edx.org/course/course-v1:HarvardX+CS50AI+1T2020/home)
+
 **Syllabus**:
 - Week0: Search
 - Week1: Knowledge
