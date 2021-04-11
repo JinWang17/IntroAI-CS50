@@ -1,4 +1,4 @@
-This is my code for the **Havard AI course assignments**. In addition to codes for course projects, I also added my own comments to the lecture demo source code as I learnt Python as a complete beginner. Be sure to check those out, too!   
+This is my code for the **Havard AI course**. In addition to codes for course projects, I also added my own comments to the lecture demo source code as I learnt Python as a complete beginner. Be sure to check those out, too!   
 
 **Course**: CS50's Introduction to Artificial Intelligence with Python 
 
