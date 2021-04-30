@@ -101,7 +101,11 @@ class NimAI():
         Return the Q-value for the state `state` and the action `action`.
         If no Q-value exists yet in `self.q`, return 0.
         """
-        raise NotImplementedError
+        state = tuple(state)
+        if (state, action) in self.q.keys():
+            return self.q[(state, action)]
+        else:
+            return 0
 
     def update_q_value(self, state, action, old_q, reward, future_rewards):
         """
@@ -118,8 +122,10 @@ class NimAI():
         `alpha` is the learning rate, and `new value estimate`
         is the sum of the current reward and estimated future rewards.
         """
-        raise NotImplementedError
+        state = tuple(state)
+        self.q[(state, action)] = old_q + self.alpha * (reward + future_rewards - old_q)
 
+        
     def best_future_reward(self, state):
         """
         Given a state `state`, consider all possible `(state, action)`
@@ -130,7 +136,16 @@ class NimAI():
         Q-value in `self.q`. If there are no available actions in
         `state`, return 0.
         """
-        raise NotImplementedError
+        actions = Nim.available_actions(state)
+        state = tuple(state)
+        if actions:
+            best = 0
+            for action in actions:
+                if (state, action) in self.q.keys() and self.q[(state, action)] > best:
+                    best = self.q[(state, action)]
+            return best
+        else:
+            return 0
 
     def choose_action(self, state, epsilon=True):
         """
@@ -147,7 +162,24 @@ class NimAI():
         If multiple actions have the same Q-value, any of those
         options is an acceptable return value.
         """
-        raise NotImplementedError
+        actions = Nim.available_actions(state)
+        if epsilon and random.random() < self.epsilon:
+            return random.choice(list(actions)) 
+        best = float("-inf")
+        best_action = None
+        unevaluated_action = None 
+        state = tuple(state)
+        
+        for action in actions:
+            if (state, action) in self.q.keys() and self.q[(state, action)] > best:
+                best = self.q[(state, action)]
+                best_action = action
+            elif (state, action) not in self.q.keys():
+                unevaluated_action = action
+        
+        if best_action is None:
+            best_action = unevaluated_action
+        return best_action
 
 
 def train(n):
@@ -185,6 +217,9 @@ def train(n):
 
             # When game is over, update Q values with rewards
             if game.winner is not None:
+                # update input: old_state, action, new_state, reward
+                # ??? What is the difference between these two lines???
+                # updated twice = not updated???
                 player.update(state, action, new_state, -1)
                 player.update(
                     last[game.player]["state"],
@@ -250,6 +285,7 @@ def play(ai, human_player=None):
         # Have AI make a move
         else:
             print("AI's Turn")
+            # in trained model, ai is not exploring anymore
             pile, count = ai.choose_action(game.piles, epsilon=False)
             print(f"AI chose to take {count} from pile {pile}.")
 
